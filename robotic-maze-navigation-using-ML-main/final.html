@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CS Project Final Report</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px auto;
+            max-width: 900px;
+            line-height: 1.6;
+            background-color: #f9f9f9;
+            color: #222;
+            text-align: justify;
+        }
+
+        h1, h2 {
+            color: #003057;
+        }
+
+        h1 {
+            border-bottom: 3px solid #B3A369;
+            padding-bottom: 10px;
+        }
+
+        section {
+            margin-bottom: 50px;
+        }
+
+        .navbar {
+            background-color: #003057;
+            padding: 12px;
+            margin-bottom: 30px;
+        }
+
+        .navbar a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .navbar a:hover {
+            text-decoration: underline;
+        }
+
+        img {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        th {
+            background-color: #eaeaea;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <a href="index.html">Project Proposal</a>
+    <a href="midterm.html">Midterm Report</a>
+    <a href="final.html">Final Report</a>
+</nav>
+
+<h1>Robotic Maze Navigation through Supervised and Unsupervised ML</h1>
+<p><strong>Team Members:</strong> Nicolas Caballero, Vladyslav Havriutkin, Andrew Li, Evan Rosenthal, Rakesh Shankar</p>
+
+<!-- INTRODUCTION -->
+<section>
+<h2>1. Introduction / Background</h2> 
+<h3>Literature Review</h3> 
+<p> Robotic maze navigation often relies on classical algorithms like A* or Dijkstra, which require full map knowledge and struggle with sensor noise.
+     To improve generalization, supervised models like Random Forests [1] and Neural Networks [2] map sensor inputs to actions. 
+     Additionally, unsupervised methods like PCA, K-Means, and Gaussian Mixture Models [3] 
+     reduce high-dimensional sensor data into meaningful states. This project compares these paradigms
+    to predict expert navigation commands from local data.
+</p> 
+
+</section>
+
+
+<!-- PROBLEM -->
+<section>
+<h2>2. Problem Definition</h2>
+
+<p>
+This project has two main objectives. The first objective is to develop a supervised learning model that predicts the robot heading from local rangefinder sensor data alone. This is the <strong>Supervised Learning portion of the project.</strong>
+</p>
+
+<p>
+For the supervised study completed so far, the model uses the 36 raycast distances as input and predicts robot heading as a continuous variable. Rather than regressing the angle directly, the model predicts <code>sin(&theta;)</code> and <code>cos(&theta;)</code>, and the final heading is recovered using <code>atan2</code>.
+</p>
+
+<p>
+Performance is evaluated using wrapped angular error on held out mazes. This measures how well the model generalizes to unseen maze layouts while avoiding optimistic leakage from near duplicate samples in the same maze.
+</p>
+
+<p>
+The second objective is to train a model to intake purely raycast data and output a prediction for which structural primitive the robot is currently in. 
+This is the <strong>Unsupervised Learning portion of the project.</strong> Since the maze is purely grid-based, the structural primitives include:
+</p>
+
+<ul>
+<li>Straight</li>
+<li>Corner</li>
+<li>3-way Intersection</li>
+<li>4-way Intersection</li>
+</ul>
+
+<p>
+Performance is evaluated using well-known clustering metrics, including Silhouette score and the DB Index.
+</p>
+
+</section>
+
+
+<!-- METHODS -->
+<section>
+
+<h2>3. Methods</h2>
+
+<h3>Simulation Environment</h3>
+
+<p>
+We implemented a physics-based simulation in PyBullet containing a differential-drive
+robot equipped with 36 raycast sensors, arranged radially emanating from the top of the robot. Maze environments are procedurally
+generated to ensure a diverse dataset of navigation situations.
+</p>
+<img src="docs/images/Robot.png" alt="Differential Drive Robot with raycast sensors visible">
+
+<h3>Data Collection</h3>
+
+<p>
+Expert trajectories are generated using classical navigation algorithms and a PD
+controller. During execution we record:
+</p>
+
+<ul>
+<li>Raycast sensor distances</li>
+<li>Robot position, <code>x</code> and <code>y</code></li>
+<li>Robot heading, <code>&theta;</code></li>
+<li>Discrete navigation command</li>
+</ul>
+
+<p>
+To collect a wide variety of data, the robot is run through the maze using A*, BFS, and DFS.
+Simulations are run using parallelization to collect data efficiently and quickly.
+</p>
+<img src="docs/images/Maze_Topdown.png" alt="Maze with A* Path visible">
+
+<h3>Preprocessing</h3>
+    
+<h4>Domain randomization of maze layouts</h4>
+<p>
+To provide a wide variety of maze environments to collect data on, we randomly generate mazes using a helper script.
+Mazes are stored as a JSON file for easy reconstruction during robot simulation, as well as easy path calculation for our expert algorithms.
+</p>
+
+<p>
+Additionally, we introduced several perturbations to the data collection pipeline to increase variety and reduce overfitting to the expert controller. 
+These perturbations serve to simulate the imperfections that are normally encountered in real-world systems
+Furthermore, these changes encourage the models to generalize beyond clean and deterministic expert demonstrations.
+</p>
+     
+<p>
+All perturbations are controlled by command line interface argument parameters and are applied on top of the original clean data collection, 
+so the final training set contains both unperturbed expert trajectories and augmented trajectories with noise. 
+This combined dataset was used for both the supervised and unsupervised experiments reported in the final results.
+</p>
+
+<p>
+The perturbations applied are listed below:
+</p>
+     
+<ul>
+    <li><strong>Sensor noise:</strong> Gaussian noise is added to each raycast distance reading, simulating the imprecision of these sensors in real life.</li>
+    <li><strong>Steering noise:</strong> Gaussian noise is applied to the wheel velocity commands produced by the PD controller at each simulation step, simulating actuator imprecision and mechanical jitter in the drivetrain.</li>
+    <li><strong>Waypoint jitter:</strong> Each intermediate waypoint along the planned path is offset by a small random displacement, which causes the robot to follow a slightly different line through each corridor on every run rather than always tracing the exact center.</li>
+    <li><strong>Randomized start and goal positions:</strong> On top of the default entrance-to-exit maze traversal, we sample random pairs of reachable cells within each maze as start and goal positions. This ensures the robot explores parts of the maze that the fixed entrance-to-exit path never visits, 
+        which significantly increases the diversity of geometric configurations in the dataset.</li>
+</ul>
+     
+
+
+<h4>Raycast Feature Preparation</h4>
+<p>
+For the supervised heading regression experiment, we keep the 36 ray distances in the robot frame and do not rotate them to align with true north. This avoids leaking the target heading into the feature representation. The ray magnitudes are scaled before training, and the target heading is converted into <code>sin(&theta;)</code> and <code>cos(&theta;)</code> for stable regression.
+</p>
+
+<p>
+For the unsupervised clustering experiment, we additionally explored direction normalized versions of the ray data to study how maze geometry changes under rotation invariant and direction preserving representations.
+</p>
+
+<h2>Implemented Machine Learning Models</h2>
+
+<h3>Supervised Learning</h3>
+<p>
+We implemented a supervised heading regression pipeline using the 36 raycast distances as input features. The target heading was represented as <code>sin(&theta;)</code> and <code>cos(&theta;)</code>, which avoids the discontinuity at angular wraparound. During inference, the final heading prediction was recovered using <code>atan2</code>.
+</p>
+
+<p>
+The dataset contained 184,418 labeled samples collected from 32 procedurally generated mazes and three expert planners, A*, BFS, and DFS. To obtain an honest estimate of generalization, train, validation, and test splits were performed by maze ID rather than by randomly splitting rows. This prevented near duplicate states from the same maze from appearing in both training and test data.
+</p>
+
+<p>
+We compared four supervised models: a mean baseline, linear regression, ridge regression, and a multilayer perceptron regressor. Linear and ridge models served as interpretable baselines, while the MLP tested whether heading information was encoded nonlinearly in the raycast pattern. Features were scaled before training, and model performance was measured using wrapped angular error in degrees.
+</p>
+
+<img src="docs/images/SupervisedModelComparison.png" alt="Comparison of supervised heading regression models">
+
+<h3>Unsupervised Learning</h3>
+<p>
+For our unsupervised approach, we implemented both K-Means and GMM clustering in order to identify the navigational states encountered by the robot as it navigates through the maze. The raw input consists of 36 raycast sensor readings per timestep, each representing the distance to the nearest object at evenly spaced angles around the robot.
+</p>
+<p>
+To prepare the data for clustering, we applied a rotation-invariant feature transformation, ensuring that the extracted features capture the spatial structure of the robot's surroundings regardless of its heading direction. This is crucial because without this step, the robot may encounter similar corridors and mistakenly label them as different due to the robot's direction being different.
+</p>
+<p>
+We selected K-Means due to its simplicity, we suspected that K-Means wouldn't be the ideal model to cluster our data, since it's highly sensitive to outliers and noise. Regardless, our intention with using K-Means was to understand our data better, and how our data clusters under hard clustering.
+</p>
+<p>
+Our second model is GMM. We selected GMM due to its robustness to noise and outliers. Since sensor data can be highly variable and noisy, we selected GMM to see how our data performs under soft clustering. GMM models each cluster as a Gaussian Distribution with its own mean and covariance, and works well on data with elliptical and overlapping cluster shapes. Therefore, we thought it would be a great choice for modeling our noisy sensor data.
+</p>
+
+</section>
+
+
+<!-- RESULTS -->
+<section>
+
+<h2>4. Results and Discussion</h2>
+    
+<h2>Unsupervised Learning Metrics</h2>
+
+<h3>K-Means Visualizations / Quant. Metrics</h3>
+
+<img src="docs/images/K-MeansElbow.png" alt="K-Means Elbow Graphs">
+
+<p>Best K (rot-invariant, max silhouette): 6<br>
+Best K (raw, max silhouette): 5</p>
+
+<p>Training K-Means with K=6 on full dataset, rot-invariant (74,581 samples)...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Inertia: 53971.3<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Silhouette: 0.1942<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Davies-Bouldin: 1.8319</p>
+
+<img src="docs/images/K-MeansPCA2D.png" alt="K-Means PCA">
+
+<img src="docs/images/K-MeansMaze.png" alt="K-Means Visualization of Maze Clustering">
+
+<h3>K-Means Analysis (Initial)</h3>
+    
+<p>
+The results of our tests show that there is generally poor separability between clusters. The silhouette score of 0.1942 for rotation-invariant data is on the lower end, and indicates that
+the K-Means clusters are barely separable. Similarly, the Davies-Bouldin score of 1.83 data is relatively high and signifies that the clusters are spread 
+out and close to one another, which also indicates poor separability. Interestingly, the best K value for the rotation-invariant dataset is higher than the best K 
+value in the raw dataset. Our team was initially surprised with this result since we thought that adding rotation-invariance would allow the model to recognize simpler 
+patterns between positions in the maze (i.e. "facing north in a corridor is no different than facing east in a similarly shaped corridor"). We believe the cause of 
+this apparent phenomenon is due to the noisiness of our data. K-Means is highly sensitive to noisy data, and our dataset is expectedly noisy due to the nature of raycast sensors 
+in simulated environments. Even though K-Means doesn't appear to be the best model for clustering our data, we were surprised with how well it performed given the nature 
+of our data. We believe that this is, in part, due to the pathfinding of the robot, since we meticulously optimized the robot's pathfinding abilities to ensure it always follows 
+a straight path through the exact middle of the maze. The idea behind this is that unpredictable paths through the maze may affect the robot's ability to recognize clusters. 
+While K-Means did impress us, we still believe that GMM will be able to handle the variance of our dataset better.
+</p>
+
+<h3>GMM Visualizations / Quant. Metrics</h3>
+
+<img src="docs/images/GMMModel.png" alt="Analysis for GMM">
+    
+<p>Best K by BIC: 11<br>
+Best K by silhouette: 7</p>
+
+<p>Training GMM with K=7 on full dataset (74,581 samples)...<br>
+&nbsp;&nbsp;&nbsp;&nbsp;BIC: -4185181.6<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Silhouette: 0.1130<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Davies-Bouldin: 2.7894</p>
+
+<img src="docs/images/K-MeansGMM.png" alt="K-Means and GMM Comparison">
+
+<h3>GMM Analysis (Initial)</h3>
+    
+<p>
+    Comparing the clustering performance of K-Means (K=6) and GMM (K=7) on the rotation-invariant feature set, K-Means produced stronger results across both shared evaluation 
+    metrics, achieving a Silhouette Score of 0.1942 versus 0.1130 and a Davies-Bouldin Index of 1.8319 versus 2.7894. These results suggest that K-Means is producing more compact, 
+    well-separated clusters on this dataset. While GMM's ability to model soft, overlapping cluster boundaries is generally considered an advantage, we believe that it may be overfitting
+    to the data somehow, and this is why we see much better results with K-means compared to GMM. K-Means, by contrast, may be benefiting from its simplicity. It is also worth noting that the 
+    difference in K (6 vs 7) complicates direct comparison, as the additional cluster in the GMM may be fragmenting the data and artificially deflating its metric scores. Though this result 
+    of K-Means performing better than GMM was surprising, we believe that, upon further analysis in the final project, we should be able to figure out if there's an error in our implementation 
+    if we need to process the data somehow, or if there's some other explanation for our GMM results.
+</p>
+
+<h3>Results of Improved Domain Randomization: Unsupervised</h3>
+
+<p>
+After adding more sophisticated domain randomization to the data collection pipeline, 
+we reran K-Means and GMM on the combined dataset containing both 
+the original expert trajectories and the augmented trajectories. As a result, the 
+robot explored parts of each maze that the fixed entrance-to-exit (initial configuration) 
+path never visited.
+</p>
+
+<p>
+Both models showed substantial improvements in cluster separability:
+</p>
+
+<table>
+<tr>
+<th>Model</th> <th>K (initial)</th> <th>Silhouette (initial)</th> <th>DB Index (initial)</th> <th>K (augmented)</th> <th>Silhouette (augmented)</th> <th>DB Index (augmented)</th>
+</tr>
+
+<tr>
+<td>K-Means</td> <td>6</td> <td>0.1942</td> <td>1.8319</td> <td>14</td> <td>0.3325</td> <td>1.2775</td>
+</tr>
+
+<tr>
+<td>GMM</td> <td>7</td> <td>0.1130</td> <td>2.7894</td> <td>9</td> <td>0.2919</td> <td>1.4551</td>
+</tr>
+
+</table>
+
+<p>
+For K-Means, the silhouette score improved by 71.2%, and its DB index 
+dropped by 30.3%. For GMM, the silhouette score 
+improved by 158.3% and its DB index dropped by 47.8%. Notably, 
+these scores suggest that GMM's earlier 
+underperformance was due to limited data diversity rather than 
+an erorr with the model.
+</p>
+
+<p>
+Additionally, the optimal K values increased for both models, which suggests that
+with the added perturbations, the robot encounters 
+a wider variety of geometric configurations. The original 4 geometric
+classes of straight hallways, corners, 3-way intersections, and 4-way intersections may have been too little to characterize the data.
+The augmented data revealed additional subtypes that produce meaningfully distinct sensor signatures.
+</p>
+
+<h2>Supervised Learning Metrics</h2>
+
+<h3>Heading Regression Model Comparison</h3>
+
+<table>
+<tr>
+<th>Model</th>
+<th>Test MAE, deg</th>
+<th>Median error, deg</th>
+<th>RMSE, deg</th>
+</tr>
+<tr>
+<td>Baseline mean</td>
+<td>71.19</td>
+<td>46.13</td>
+<td>82.54</td>
+</tr>
+<tr>
+<td>Linear regression</td>
+<td>57.88</td>
+<td>47.81</td>
+<td>72.46</td>
+</tr>
+<tr>
+<td>Ridge regression</td>
+<td>57.88</td>
+<td>47.81</td>
+<td>72.46</td>
+</tr>
+<tr>
+<td>MLP regressor</td>
+<td>26.32</td>
+<td>7.81</td>
+<td>53.65</td>
+</tr>
+</table>
+
+<img src="docs/images/SupervisedModelComparison.png" alt="Bar chart comparing supervised heading regression models">
+    
+<h3>Initial Supervised Results</h3>
+
+<p>
+The supervised heading regression results show a clear difference between linear and nonlinear models. Linear regression and ridge regression both improved over the baseline, but their test errors remained high, with mean absolute angular error near 58 degrees. In contrast, the MLP regressor reduced test MAE to 26.32 degrees and reduced median error to 7.81 degrees. This indicates that the raycast measurements contain useful heading information, but the relationship is strongly nonlinear.
+</p>
+
+<p>
+The planner wise results were also stable, with nearly identical mean errors across A*, BFS, and DFS. This suggests the learned representation generalizes across different expert path styles rather than overfitting to a single planner. Spatial error maps showed that large residual errors were concentrated in more ambiguous regions of the maze, such as turns, intersections, and symmetric local geometries.
+</p>
+
+<p>
+Overall, the supervised results support two conclusions. First, heading prediction from local ray data is feasible. Second, a nonlinear model is needed to extract this information effectively. The MLP provided the best performance among the models tested and is the strongest supervised baseline completed at this stage.
+</p>
+
+<img src="docs/images/SupervisedMazeComparison.png" alt="Spatial comparison of heading regression error across models">
+<img src="docs/images/SupervisedBestModelDiagnostics.png" alt="Best model heading regression diagnostics">
+
+<h3>Results of Improved Domain Randomization: Supervised</h3>
+
+<p>
+We reran all four supervised models on the augmented dataset, using 
+the same training / validation / testing split to keep the 
+comparison consistent.
+</p>
+
+<table>
+<tr>
+<th>Model</th>
+<th>MAE, initial</th>
+<th>MAE, augmented</th>
+<th>MAE % change</th>
+<th>Median, initial</th>
+<th>Median, augmented</th>
+<th>Median % change</th>
+</tr>
+<tr>
+<td>Baseline mean</td>
+<td>71.19</td>
+<td>40.02</td>
+<td>-43.8%</td>
+<td>46.13</td>
+<td>34.03</td>
+<td>-26.2%</td>
+</tr>
+<tr>
+<td>Linear regression</td>
+<td>57.88</td>
+<td>32.30</td>
+<td>-44.2%</td>
+<td>47.81</td>
+<td>17.64</td>
+<td>-63.1%</td>
+</tr>
+<tr>
+<td>Ridge regression</td>
+<td>57.88</td>
+<td>31.42</td>
+<td>-45.7%</td>
+<td>47.81</td>
+<td>16.66</td>
+<td>-65.2%</td>
+</tr>
+<tr>
+<td>MLP regressor</td>
+<td>26.32</td>
+<td>16.83</td>
+<td>-36.1%</td>
+<td>7.81</td>
+<td>3.69</td>
+<td>-52.7%</td>
+</tr>
+</table>
+
+<p>
+As the table shows, every model improved on every metric. The linear models benefited 
+the most in relative terms, with ridge regression MAE dropping 45.7%. 
+This is likely because the increased data diversity reduced 'blind spots' in the sensor inputs,
+simplifying the mapping so that the models didn't have to struggle as much with complex nonlinear patterns. 
+The MLP remained the strongest model overall, achieving a 
+median error of only 3.69 degrees.
+</p>
+
+
+<h3>Next Steps</h3>
+
+<ul>
+<li>Implement the planned supervised imitation learning pipeline for discrete action prediction using <code>[sensor readings, goal heading]</code> as input and compare KNN, Random Forest, and MLP classifiers.</li>
+<li>Evaluate the supervised models using the proposal metrics: accuracy, precision, recall, F1 score, ROC AUC, maze success rate, collision rate, and path efficiency relative to the expert controller.</li>
+<li>Further explore the results of the GMM implementation to ensure that the results are correct.</li>
+<li>Use the discovered cluster IDs as additional features in the supervised navigation model and test whether this improves generalization on unseen maze layouts.</li>
+<li>Validate all final models on held out mazes and compare how well they generalize to new environments beyond the training layouts.</li>
+</ul>
+
+</section>
+
+<!-- references -->
+<section>
+
+    <h2>5. References</h2>
+
+<div class="reference">
+[1] S. Thrun, W. Burgard, and D. Fox, <i>Probabilistic Robotics</i>. Cambridge, MA, USA: MIT Press, 2005.
+</div>
+
+<div class="reference">
+[2] I. Goodfellow, Y. Bengio, and A. Courville, <i>Deep Learning</i>. Cambridge, MA, USA: MIT Press, 2016.
+</div>
+
+<div class="reference">
+[3] C. M. Bishop, <i>Pattern Recognition and Machine Learning</i>. New York, NY, USA: Springer, 2006.
+</div>
+
+<div class="reference">
+[4] T. Cover and P. Hart, "Nearest neighbor pattern classification," IEEE Transactions on Information Theory, vol. IT-13, no. 1, pp. 21-27, Jan. 1967. doi: 10.1109/TIT.1967.1053964.
+</div>
+
+<div class="reference">
+[5] L. Breiman, "Random Forests," Machine Learning, vol. 45, no. 1, pp. 5-32, Oct. 2001. doi: 10.1023/A:1010933404324.
+</div>
+
+<div class="reference">
+[6] D. E. Rumelhart, G. E. Hinton, and R. J. Williams, "Learning representations by back-propagating errors," Nature, vol. 323, no. 6088, pp. 533-536, Oct. 1986. doi: 10.1038/323533a0.
+</div>
+
+<div class="reference">
+[7] J. MacQueen, "Some Methods for Classification and Analysis of Multivariate Observations," in Proc. Fifth Berkeley Symposium on Mathematical Statistics and Probability, 1967, pp. 281-297.
+</div>
+
+<div class="reference">
+[8] A. P. Dempster, N. M. Laird, and D. B. Rubin, "Maximum Likelihood from Incomplete Data via the EM Algorithm," Journal of the Royal Statistical Society: Series B (Methodological), vol. 39, no. 1, pp. 1-38, 1977.
+</div>
+
+<div class="reference">
+[9] K. Fukunaga and P. M. Narendra, "A Branch and Bound Algorithm for Computing k-Nearest Neighbors," IEEE Transactions on Computers, vol. C-24, no. 7, pp. 750-753, Jul. 1975. doi: 10.1109/TC.1975.5009429.
+
+</div>
+</section>
+
+
+<!-- GANTT -->
+<section>
+
+<h2>6. Project Timeline (Gantt Chart)</h2>
+
+<p>
+<a href="https://docs.google.com/spreadsheets/d/18jyxMSyGy_TwPkr1Fof1A7iccdcP7E7KopPvu4tTadI/edit?usp=sharing">
+View Gantt Chart
+</a>
+</p>
+
+</section>
+
+
+<!-- CONTRIBUTIONS -->
+<section>
+
+<h2>7. Final Contributions</h2>
+
+<table>
+<tr>
+<th>Name</th>
+<th>Final Contributions</th>
+</tr>
+
+<tr>
+<td>Nicolas Caballero</td>
+<td>Autonomous navigation using MLP and GMM, creating the videos for the slideshow</td>
+</tr>
+
+<tr>
+<td>Vladyslav Havriutkin</td>
+<td>Final presentation slideshow, Website, Final Videos</td>
+</tr>
+
+<tr>
+<td>Andrew Li</td>
+<td>Domain Randomization Implementation / Data Collection / Results, Final Presentation</td>
+</tr>
+
+<tr>
+<td>Evan Rosenthal</td>
+<td>Final presentation, Website, Simulation and Project Polish</td>
+</tr>
+
+<tr>
+<td>Rakesh Shankar</td>
+<td>Final presentation, Website</td>
+</tr>
+
+</table>
+
+</section>
+
+</body>
+</html>

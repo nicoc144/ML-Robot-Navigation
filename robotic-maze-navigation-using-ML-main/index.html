@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CS Project Proposal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px auto;
+            max-width: 900px;
+            line-height: 1.6;
+            background-color: #f9f9f9;
+            color: #222;
+            text-align: justify;
+        }
+
+        h1, h2 {
+            color: #003057;
+        }
+
+        h1 {
+            border-bottom: 3px solid #B3A369;
+            padding-bottom: 10px;
+        }
+
+        section {
+            margin-bottom: 50px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #eaeaea;
+        }
+
+        .gantt-bar {
+            height: 25px;
+            background-color: #003057;
+            margin: 5px 0;
+            color: white;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .reference {
+            margin-bottom: 10px;
+        }
+        .navbar {
+            background-color: #003057;
+            padding: 12px;
+            margin-bottom: 30px;
+        }
+        
+        .navbar a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .navbar a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="index.html">Project Proposal</a>
+    <a href="midterm.html">Midterm Report</a>
+    <a href="final.html">Final Report</a>
+</nav>
+<h1>Robotic Maze Navigation through Supervised and Unsupervised ML</h1>
+<p><strong>Team Members:</strong> Nicolas Caballero, Vladyslav Havriutkin, Andrew Li, Evan Rosenthal, Rakesh Shankar</p>
+
+<!-- ================= INTRODUCTION ================= -->
+<section>
+
+<h2>1. Introduction / Background</h2> 
+<h3>Literature Review</h3> 
+<p> Robotic maze navigation often relies on classical algorithms like A* or Dijkstra, which require full map knowledge and struggle with sensor noise.
+     To improve generalization, supervised models like Random Forests [1] and Neural Networks [2] map sensor inputs to actions. 
+     Additionally, unsupervised methods like PCA, K-Means, and Gaussian Mixture Models [3] 
+     reduce high-dimensional sensor data into meaningful states. This project compares these paradigms
+    to predict expert navigation commands from local data.
+</p> 
+
+<h3>Dataset Description</h3> 
+<p> The dataset is self collected using a PD controlled expert robot. Each sample contains robot heading, raycast distance values, and a discretized command label derived from wheel velocities: forward, left, right, backward. All features are numerical. Preprocessing includes scaling, dimensionality reduction, and class balance analysis.
+</p> 
+    
+<h3>Dataset Link</h3> 
+<p> Will be hosted in the project GitHub repository. </p>
+</section>
+
+<!-- ================= PROBLEM DEFINITION ================= -->
+<section>
+<h2>2. Problem Definition</h2>
+
+<h3>Problem</h3>
+<p>
+Classical navigation algorithms such as A* and Dijktra's are limited by their reliance on deterministic transitions.
+Our objective is to develop a machine learning-based control policy 
+for a differential-drive robot that utilizes rangefinder sensor data to navigate unknown mazes.
+
+</p>
+
+
+
+</section>
+
+<!-- ================= METHODS ================= -->
+<section>
+<h2>3. Methods</h2>
+
+<h3>Simulation & Data Generation</h3>
+<p>
+We implement a physics-based simulation in PyBullet consisting of a procedurally generated 2D maze and a differential-drive robot with forward-facing raycast sensors. Expert trajectories are generated using classical path planning (A* and wall-following) followed by a PD waypoint-tracking controller. During execution, we record:
+</p>
+
+<ul>
+<li>Raycast sensor distances</li>
+<li>Goal-relative heading</li>
+<li>Discrete action (Forward, Turn Left, Turn Right) derived from controller angular velocity</li>
+</ul>
+
+<p>
+At test time, the learned policy outputs one of the three discrete actions, which are mapped to fixed wheel velocities. To reduce distribution shift, we introduce controlled perturbations including waypoint jitter, steering noise, sensor noise, and randomized start/goal configurations.
+</p>
+
+<hr>
+
+<h3>Supervised Learning: Imitation-Based Navigation</h3>
+
+<p>
+Navigation is formulated as a supervised classification task:
+</p>
+
+<pre>[Sensor Readings, Goal Heading] -> Discrete Action</pre>
+
+<p>
+We evaluate three models implemented in scikit-learn:
+</p>
+
+<ul>
+<li><strong>k-Nearest Neighbors (KNN)</strong> [4]</li>
+<li><strong>Random Forest Classifier</strong> [5]</li>
+<li><strong>Multi-Layer Perceptron (MLP)</strong> [6]</li>
+</ul>
+
+<p>
+Performance is measured using action accuracy, confusion matrices, maze success rate, collision rate, and path efficiency relative to the expert.
+</p>
+
+<hr>
+
+<h3>Unsupervised Learning: Structural Discovery</h3>
+
+<p>
+To identify recurring geometric patterns, we cluster expert sensor observations without action labels. We evaluate:
+</p>
+
+<ul>
+<li><strong>K-Means</strong> [7]</li>
+<li><strong>Gaussian Mixture Models (GMM)</strong> [8]</li>
+<li><strong>Principal Component Analysis (PCA)</strong> for visualization [9]</li>
+</ul>
+
+<p>
+Clustering quality is assessed using Silhouette Score and Bayesian Information Criterion (BIC). We analyze whether clusters correspond to structural primitives (e.g., corridors, intersections).
+</p>
+
+<hr>
+
+<h3>Integration Study</h3>
+
+<pre>
+Baseline:   Sensor + Heading -> Action
+Enhanced:   Sensor + Heading + Cluster ID -> Action
+</pre>
+
+<p>
+Cluster assignments are appended as features to evaluate whether structural abstraction improves generalization and navigation performance on unseen mazes.
+</p>
+
+<hr>
+
+<h3>Preprocessing</h3>
+
+<ul>
+<li><strong>Domain Randomization:</strong> Diverse maze layouts and start/goal positions.</li>
+<li><strong>Noise Injection:</strong> Small perturbations during expert rollout.</li>
+<li><strong>Feature Normalization:</strong> Z-score scaling of inputs.</li>
+<li><strong>Parallel Data Collection:</strong> Multiple PyBullet instances in DIRECT mode.</li>
+</ul>
+
+</section>
+
+<!-- ================= RESULTS ================= -->
+<section>
+<h2>4. (Potential) Results and Discussion</h2>
+
+<h3>Evaluation Metrics (Supervised)</h3>
+<ul>
+    <li><strong>Accuracy:</strong> The percentage of the total timestamps where the model's predicted actions match the PD controller's actions. </li>
+    <li><strong>Precision:</strong> The ratio of correct action predictions to total predictions, where high precision minimizes false turns into walls.</li> 
+    <li><strong>Recall:</strong> The ratio of identified correct actions to total actual actions, where high recall means less missed turns</li>
+    <li><strong>F1-Score:</strong> The harmonic mean / the balance between "missed turns" and "wrong turns." </li>
+    <li><strong>ROC-AUC:</strong> Indication of class separation. A higher AUC score means better class separation </li>
+</ul>
+
+<h3>Evaluation Metrics (Unsupervised)</h3>
+<ul>
+    <li><strong>Silhouette Score:</strong> Evaluates a model based on how well-defined clusters are in space. A score for each point is calculated based on the distance to points inside its cluster versus points in neighboring clusters/</li>
+    <li><strong>Bayesian Information Criterion:</strong> Useful for GMM, calculates probability that a point belongs to a distribution. This metric also heavily penalizes overfitting. </li>
+</ul>
+
+<h3>Project Goals</h3>
+<p>
+    For classification accuracy, we'd ideally want to have a classification accuracy of at least 80%, this need to be high to account for the dominant "forward" class.  
+    The F1 score should also be greater than 0.75 to ensure that the robot attempts a required turn. For unsupervised learning, we're aming to a Silhouette Score that shows strong structural definition (around 0.5 or higher) to ensure that the clusters are well defined.
+    We recognize PyBullet training's energy cost, although the required compute remains lightweight.
+</p>
+
+<h3>Expected Results</h3>
+<p>
+    Between the supervised models, we expect the MLP to achieve the highest classification accuracy and F1 score. We expect Random Forest to perform the second best, and we expect KNN to be the weakest performer. 
+    </p>
+    <p>
+        For the unsupervised component, we expect K-Means and GMM to identify roughly 3 to 5 meaningful clusters. We expect GMM to outperform K-Means in states where there are wide corridors or angled turns. PCA is expected to reveal that the majority of variance in the raycast sensor space is captured in 2 to 3 principal components. 
+    </p>
+    <p>
+        Finally, we expect the enhanced supervised model that includes cluster ID to outperform the baseline model on unseen maze layouts due to the extra information from the clusters.
+    </p>
+</section>
+
+<!-- ================= GANTT CHART ================= -->
+<section>
+<h2>5. Project Timeline (Gantt Chart)</h2>
+
+<a href="https://docs.google.com/spreadsheets/d/18jyxMSyGy_TwPkr1Fof1A7iccdcP7E7KopPvu4tTadI/edit?usp=sharing">Gantt Chart</a>
+
+</section>
+
+<!-- ================= CONTRIBUTIONS ================= -->
+<section>
+<h2>6. Team Contributions</h2>
+
+<table>
+    <tr>
+        <th>Team Member</th>
+        <th>Responsibilities</th>
+    </tr>
+    <tr>
+        <td>Nicolas Caballero</td>
+        <td>Video presentation and Slideshow</td>
+    </tr>
+    <tr>
+        <td>Vladyslav Havriutkin</td>
+        <td>Problem Definition</td>
+    </tr>
+    <tr>
+        <td>Andrew Li</td>
+        <td>Results and Discussions and Gantt Chart</td>
+    </tr>
+    <tr>
+        <td>Evan Rosenthal</td>
+        <td>Github Website, Methodologies</td>
+    </tr>
+    <tr>
+        <td>Rakesh Shankar</td>
+        <td>Introduction, Problem Definition</td>
+    </tr>
+</table>
+
+</section>
+
+<!-- ================= REFERENCES ================= -->
+<section>
+<h2>7. References</h2>
+
+<div class="reference">
+[1] S. Thrun, W. Burgard, and D. Fox, <i>Probabilistic Robotics</i>. Cambridge, MA, USA: MIT Press, 2005.
+</div>
+
+<div class="reference">
+[2] I. Goodfellow, Y. Bengio, and A. Courville, <i>Deep Learning</i>. Cambridge, MA, USA: MIT Press, 2016.
+</div>
+
+<div class="reference">
+[3] C. M. Bishop, <i>Pattern Recognition and Machine Learning</i>. New York, NY, USA: Springer, 2006.
+</div>
+
+<div class="reference">
+[4] T. Cover and P. Hart, "Nearest neighbor pattern classification," IEEE Transactions on Information Theory, vol. IT-13, no. 1, pp. 21-27, Jan. 1967. doi: 10.1109/TIT.1967.1053964.
+</div>
+
+<div class="reference">
+[5] L. Breiman, "Random Forests," Machine Learning, vol. 45, no. 1, pp. 5-32, Oct. 2001. doi: 10.1023/A:1010933404324.
+</div>
+
+<div class="reference">
+[6] D. E. Rumelhart, G. E. Hinton, and R. J. Williams, "Learning representations by back-propagating errors," Nature, vol. 323, no. 6088, pp. 533-536, Oct. 1986. doi: 10.1038/323533a0.
+</div>
+
+<div class="reference">
+[7] J. MacQueen, "Some Methods for Classification and Analysis of Multivariate Observations," in Proc. Fifth Berkeley Symposium on Mathematical Statistics and Probability, 1967, pp. 281-297.
+</div>
+
+<div class="reference">
+[8] A. P. Dempster, N. M. Laird, and D. B. Rubin, "Maximum Likelihood from Incomplete Data via the EM Algorithm," Journal of the Royal Statistical Society: Series B (Methodological), vol. 39, no. 1, pp. 1-38, 1977.
+</div>
+
+<div class="reference">
+[9] K. Fukunaga and P. M. Narendra, "A Branch and Bound Algorithm for Computing k-Nearest Neighbors," IEEE Transactions on Computers, vol. C-24, no. 7, pp. 750-753, Jul. 1975. doi: 10.1109/TC.1975.5009429.
+
+</div>
+
+</section>
+<h3>"Outstanding Project Award" opt-in</h3>
+<p>We would like to be considered for the Outstanding Project Award.</p>
+</body>
+</html>

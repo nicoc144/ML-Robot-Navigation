@@ -1,0 +1,20 @@
+name: maze-project
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+
+  # Add new conda packages here:
+  # - scipy
+  # - matplotlib
+
+  - pip
+  - pip:
+      # Add new pip-only packages here:
+      - pybullet
+      - tqdm
+      - scikit-learn
+      - plotly
+      - pandas
