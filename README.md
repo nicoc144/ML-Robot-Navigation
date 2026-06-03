@@ -16,8 +16,8 @@
 ### Machine Learning
 
 - `maze_project/learning/`: ML experiment notebooks
-- `maze_project/learning/supervised_linear_mlp.ipynb`: Supervised heading regression (linear, ridge, MLP) with maze-grouped train/test splits
-- `maze_project/learning/unsupervised_clustering.ipynb`: Unsupervised clustering (K-Means, GMM) with rotation-invariant features and PCA visualization
+- `maze_project/learning/archive/supervised_linear_mlp.ipynb`: Supervised heading regression (linear, ridge, MLP) with maze-grouped train/test splits
+- `maze_project/learning/archive/unsupervised_clustering.ipynb`: Unsupervised clustering (K-Means, GMM) with rotation-invariant features and PCA visualization
 
 ### Environment Setup
 
@@ -26,6 +26,9 @@
 - `conda/setup.sh`: Setup script for Linux / macOS
 - `conda/setup.bat`: Setup script for Windows
 
-### Report
+### Archive
 
-- `docs/images/`: Figures and visualizations referenced in the midterm report
+- `archive/docs/images/`: Figures and visualizations referenced in the midterm and final report
+- `archive/index.html` : Report for project proposal (includes general contributions from teammates)
+- `archive/midterm.html` : Report for project midterm (includes general contributions from teammates)
+- `archive/final.html` : Report for project final (includes general contributions from teammates)

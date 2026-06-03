@@ -221,7 +221,7 @@ python tools/generate_maze.py --width 12 --height 8 --seed 42
 # All options
 python tools/generate_maze.py --width 6 --height 6 --seed 0 \
                               --cell-size 1.0 --wall-width 0.15 --wall-height 1.0 \
-                              --out data/mazes/my_maze.json
+                              --out data/mazes/[NAME].json
 ```
 
 The tool prints an ASCII preview with the A\* path overlaid and saves a JSON
@@ -231,20 +231,20 @@ file to `mazes/`.
 
 ```bash
 # Keyboard control
-python main.py --maze data/mazes/my_maze.json
+python main.py --maze data/mazes/[NAME].json
 
 # Guided Navigation mode – A* (default planner)
-python main.py --maze data/mazes/my_maze.json --guided
+python main.py --maze data/mazes/[NAME].json --guided
 
 # Guided Navigation mode – choose a different planner
-python main.py --maze data/mazes/my_maze.json --guided --planner bfs
-python main.py --maze data/mazes/my_maze.json --guided --planner dfs
+python main.py --maze data/mazes/[NAME].json --guided --planner bfs
+python main.py --maze data/mazes/[NAME].json --guided --planner dfs
 
 # Headless (no GUI, useful for data collection / training)
-python main.py --maze data/mazes/my_maze.json --headless
+python main.py --maze data/mazes/[NAME].json --headless
 
 # Run the simulation using the trained unsupervised and supervised models
-python main.py --maze data/mazes/my_maze.json --autonomous
+python main.py --maze data/mazes/[NAME].json --autonomous
 
 # Open environment with no maze
 python main.py --no-maze
@@ -269,7 +269,7 @@ python main.py --no-maze
 from maze_generator import MazeData
 from planning import AStarPlanner, BFSPlanner, DFSPlanner
 
-maze  = MazeData.load("data/mazes/my_maze.json")
+maze  = MazeData.load("data/mazes/[NAME].json")
 start = (maze.entrance["cell_row"], maze.entrance["cell_col"])
 goal  = (maze.exit["cell_row"],     maze.exit["cell_col"])
 

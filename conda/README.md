@@ -22,7 +22,7 @@ Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda
 
 Run the appropriate script **from the project root** (not from inside the `conda/` folder):
 
-**Linux / macOS:**
+**Linux / macOS(Intel chip):**
 ```bash
 ./conda/setup.sh
 ```
